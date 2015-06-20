@@ -29,9 +29,19 @@
  *           resolve(value + 1);
  *         });
  *       }).progress(function(value, values, progress) {
- *         assert(value == 2 || value == 3);
- *         assert(values == [2] || values == [2, 3]);
- *         assert(progress == 1 || progress == 2);
+ *         // First iteration
+ *         if ( progress == 1 ) {
+ *           assert(value == 2);
+ *           assert(values == [2]);
+ *           assert(progress == 1);
+ *         }
+ *
+ *         // Second iteration
+ *         else {
+ *           assert(value == 3);
+ *           assert(values == [2, 3]);
+ *           assert(progress == 2);
+ *         }
  *       });
  *
  * The `catch` method behaves like a Promise in that it returns the object that
