@@ -1,5 +1,5 @@
 {
-  "name": "continuity",
+  "name": "promise-continuity",
   "description": "Node.js module to execute an array of functions returning promises",
   "version": "0.0.1",
   "author": "Ryan Norman <rsnorman15@gmail.com> (http://github.com/rsnorman)",
