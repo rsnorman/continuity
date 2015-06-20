@@ -14,7 +14,7 @@
  * The `then` method will return all the values resolved by the promises:
  *
  *       new Continuity([1, 2], function(value) {
- *         new Promise(function(resolve) {
+ *         return new Promise(function(resolve) {
  *           resolve(value + 1);
  *         });
  *       }).then(function(values) {
@@ -25,7 +25,7 @@
  * executing promise along with all the returned values and progress:
  *
  *       new Continuity([1, 2], function(value) {
- *         new Promise(function(resolve) {
+ *         return new Promise(function(resolve) {
  *           resolve(value + 1);
  *         });
  *       }).progress(function(value, values, progress) {
@@ -45,7 +45,7 @@
  *       });
  *
  * The `catch` method behaves like a Promise in that it returns the object that
- * that caused the promise to reject.
+ * that caused the promise to reject, effectively stopping the iterator.
  *
  * @param {Array} Array-like object that will be used to call promise returning function
  * @param {Function} function that returns promises and will be called with array values
