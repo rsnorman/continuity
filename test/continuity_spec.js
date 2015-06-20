@@ -14,19 +14,17 @@ describe('Continuity', function() {
   });
 
   function runContinuitySequence(done) {
-    new Continuity(initialValues, function(value) {
-      return new Promise(function(resolve, reject){
-        if ( !isNaN(value) ) {
-          if ( value !== 100 ) {
-            resolve(value + 10);
-          } else {
-            // don't do anything to simulate long running function
-            done();
-          }
+    new Continuity(initialValues, function(value, resolve, reject) {
+      if ( !isNaN(value) ) {
+        if ( value !== 100 ) {
+          resolve(value + 10);
         } else {
-          reject('Not a number dummy');
+          // don't do anything to simulate long running function
+          done();
         }
-      });
+      } else {
+        reject('Not a number dummy');
+      }
     })
     .then(function(_values) {
       values = _values;

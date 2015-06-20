@@ -8,15 +8,13 @@
 
 /**
  * Creates an object that iterates over a collection and passing values
- * into asynchronous functions that returns promises. Each function must wait
- * until the previous one has finished before starting.
+ * into asynchronous functions that resolve or reject promises. Each function
+ * must wait until the previous one has finished before starting.
  *
  * The `then` method will return all the values resolved by the promises:
  *
- *       new Continuity([1, 2], function(value) {
- *         return new Promise(function(resolve) {
- *           resolve(value + 1);
- *         });
+ *       new Continuity([1, 2], function(value, resolve) {
+ *         resolve(value + 1);
  *       }).then(function(values) {
  *         assert(values == [2, 3]);
  *       });
@@ -24,10 +22,8 @@
  * The `progress` method will return the value resolved by the current
  * executing promise along with all the returned values and progress:
  *
- *       new Continuity([1, 2], function(value) {
- *         return new Promise(function(resolve) {
- *           resolve(value + 1);
- *         });
+ *       new Continuity([1, 2], function(value, resolve) {
+ *         resolve(value + 1);
  *       }).progress(function(value, values, progress) {
  *         // First iteration
  *         if ( progress == 1 ) {
@@ -47,12 +43,18 @@
  * The `catch` method behaves like a Promise in that it returns the object that
  * that caused the promise to reject, effectively stopping the iterator.
  *
- * @param {Array} Array-like object that will be used to call promise returning function
- * @param {Function} function that returns promises and will be called with array values
+ *       new Continuity([1, 2], function(value, resolve, reject) {
+ *         reject('Dislike this value: ' + value);
+ *       }).catch(function(error) {
+ *         assert(error == 'Dislike this value: 1');
+ *       });
+ *
+ * @param {Array} Array-like object that will be used to call function
+ * @param {Function} asynchronous function that will be called with array value
  * @return {Continuity} for thenable methods and progress callback
  * @public
  */
-var Continuity = function(collection, promiseFn) {
+var Continuity = function(collection, iterationFn) {
   var continuity,
       promise,
       reject,
@@ -64,39 +66,47 @@ var Continuity = function(collection, promiseFn) {
 
 
   /**
-   * Recursive function that queues up promise functionswith values in collection
+   * Recursive function that queues up functions that resolve or reject promises
+   * with values in collection
    *
    * @param {Array} Array-like object that will be used to call promise returning function
    * @param {Function} function that returns promises and will be called with array values
    * @param {Array} values that have been returned from promises
    * @private
    */
-  function collectionIterator(collection, promiseFn, values) {
+  function collectionIterator(collection, values) {
     collection = Array.prototype.slice.call(collection);
     values = Array.prototype.slice.call(values);
 
-    promiseFn(collection[0])
-      .then(function(value) {
-        collection.shift();
-        values.push(value);
+    // Create iteration promise to pass resolver and rejecter into function
+    new Promise(function(iterationResolve, iterationReject) {
+      iterationFn(collection[0], iterationResolve, iterationReject)
+    })
 
-        // fire all progress callbacks on each iteration
-        progressCallbacks.map(function(callback) {
-          callback(value, values, values.length);
-        });
+    // Resolved iteration
+    .then(function(value) {
+      collection.shift();
+      values.push(value);
 
-        // Still have more to run, execute another promise function
-        if ( collection.length > 0 ) {
-          collectionIterator(collection, promiseFn, values);
-        }
+      // fire all progress callbacks on each iteration
+      progressCallbacks.map(function(callback) {
+        callback(value, values, values.length);
+      });
 
-        // All done, resolve promise
-        else {
-          resolve(values);
-        }
+      // Still have more to run, execute another promise function
+      if ( collection.length > 0 ) {
+        collectionIterator(collection, values);
+      }
 
-      })
-      .catch(reject);
+      // All done, resolve promise
+      else {
+        resolve(values);
+      }
+
+    })
+
+    // Rejected iteration
+    .catch(reject);
   }
 
 
@@ -108,7 +118,7 @@ var Continuity = function(collection, promiseFn) {
   promise = new Promise(function(_resolve, _reject) {
     resolve = _resolve;
     reject = _reject;
-    collectionIterator(collection, promiseFn, []);
+    collectionIterator(collection, []);
   });
 
 

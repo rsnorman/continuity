@@ -1,7 +1,7 @@
 {
   "name": "promise-continuity",
   "description": "Node.js module to execute an array of functions returning promises",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "author": "Ryan Norman <rsnorman15@gmail.com> (http://github.com/rsnorman)",
   "keywords": ["promise", "chain", "sequential", "array"],
   "repository" : {
