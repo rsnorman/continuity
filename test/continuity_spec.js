@@ -14,7 +14,7 @@ describe('Continuity', function() {
   });
 
   function runContinuitySequence(done) {
-    new Continuity(initialValues, function(value, resolve, reject) {
+    return new Continuity(initialValues, function(value, resolve, reject) {
       if ( !isNaN(value) ) {
         if ( value !== 100 ) {
           resolve(value + 10);
@@ -119,6 +119,61 @@ describe('Continuity', function() {
 
     it("fails if one promise fails", function(){
       assert(errorMessage == 'Not a number dummy');
+    });
+  });
+
+  describe('with progress attached after promises resolved', function() {
+    var continuity;
+
+    beforeEach(function(done) {
+      initialValues = [1, 10];
+      continuity = runContinuitySequence(done);
+    });
+
+    it('fires progress function for all resolved values', function() {
+      var valueSum;
+      valueSum = 0;
+
+      continuity.progress(function(value) {
+        valueSum += value;
+      });
+
+      assert(valueSum == 31);
+    });
+
+    it('fires progress function for all collection values', function() {
+      var collectionSum;
+      collectionSum = 0;
+
+      continuity.progress(function(value, originalValue) {
+        collectionSum += originalValue;
+      });
+
+      assert(collectionSum == 11);
+    });
+
+    it('fires progress function for all arrays of resolved values', function() {
+      var resolvedValues;
+      resolvedValues = [];
+
+      continuity.progress(function(value, originalValue, values) {
+        resolvedValues.push(values);
+      });
+
+      assert(resolvedValues[0][0] == 11);
+      assert(resolvedValues[1][0] == 11);
+      assert(resolvedValues[1][1] == 20);
+    });
+
+    it('fires progress function for all progress values', function() {
+      var progressSum;
+      progressSum = 0;
+
+      continuity.progress(function(value, originalValue, values, progress) {
+        progressSum += progress;
+      });
+
+      assert(progressSum == 3);
     });
   });
 });
