@@ -121,27 +121,20 @@ var Continuity = function(collection, iterationFn) {
     collectionIterator(collection, []);
   });
 
-
-  /**
-   * Returns Promise-like object that allows thenable chains along with
-   * progress callbacks that fire on each iteration.
-   */
-  continuity = {
-    then: function(callback) {
-      promise.then(callback);
-      return continuity;
-    },
-    catch: function(callback) {
-      promise.catch(callback);
-      return continuity;
-    },
-    progress: function(callback) {
-      progressCallbacks.push(callback);
-      return continuity;
-    }
+  this.then = function(callback) {
+    promise.then(callback);
+    return this;
   };
 
-  return continuity;
+  this.catch = function(callback) {
+    promise.catch(callback);
+    return this;
+  };
+
+  this.progress = function(callback) {
+    progressCallbacks.push(callback);
+    return this;
+  };
 
 };
 
