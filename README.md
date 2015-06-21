@@ -53,6 +53,7 @@ The `progress` method will return the value resolved by the current executing pr
         assert(values == [2, 3]);
         assert(progress == 2);
       }
+
     });
 
 **NOTE**: The progress callback can be attached even after Continuity

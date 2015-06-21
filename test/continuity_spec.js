@@ -5,7 +5,7 @@ var should = require('should');
 describe('Continuity', function() {
   var initialValues;
   var values;
-  var errorMessage;
+  var errorMessage, superBadErrorMessage;
   var progress, progressCount;
 
   beforeEach(function() {
@@ -29,6 +29,8 @@ describe('Continuity', function() {
     .then(function(_values) {
       values = _values;
       done();
+    }, function(message) {
+      superBadErrorMessage = message + '!!!';
     })
     .catch(function(message) {
       errorMessage = message;
@@ -119,6 +121,10 @@ describe('Continuity', function() {
 
     it("fails if one promise fails", function(){
       assert(errorMessage == 'Not a number dummy');
+    });
+
+    it('calls second callback in then method', function() {
+      assert(superBadErrorMessage == 'Not a number dummy!!!');
     });
   });
 

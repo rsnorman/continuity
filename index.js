@@ -42,6 +42,7 @@
  *           assert(values == [2, 3]);
  *           assert(progress == 2);
  *         }
+ *
  *       });
  *
  * The `catch` method behaves like a Promise in that it returns the object that
@@ -59,8 +60,7 @@
  * @public
  */
 var Continuity = function(originalCollection, iterationFn) {
-  var continuity,
-      promise,
+  var promise,
       reject,
       resolve,
       progressCallbacks,
@@ -135,16 +135,76 @@ var Continuity = function(originalCollection, iterationFn) {
     collectionIterator(collection, []);
   });
 
-  this.then = function(callback) {
-    promise.then(callback);
+  /**
+   * Adds resolve and reject callbacks that behave exactly like Promise `then` method
+   *
+   *       new Continuity([1, 2], function(value, resolve) {
+   *         resolve(value + 1);
+   *       }).then(function(values) {
+   *         assert(values == [2, 3]);
+   *       }, function(error) {
+   *         console.warn("There was an error!", error);
+   *       });
+   *
+   * @param {Function} asynchronous function that will be called with resolved value
+   * @param {Function} asynchronous function that will be called with error value
+   * @return {Continuity} for thenable methods and progress callback
+   * @public
+   */
+  this.then = function(resolveCallback, rejectCallback) {
+    promise.then(resolveCallback, rejectCallback);
     return this;
   };
 
+  /**
+   * Adds reject callback that behave exactly like Promise `catch` method
+   *
+   *       new Continuity([1, 2], function(value, resolve) {
+   *         resolve(value + 1);
+   *       }).catch(function(error) {
+   *         console.warn("There was an error!", error);
+   *       });
+   *
+   * @param {Function} asynchronous function that will be called with error value
+   * @return {Continuity} for thenable methods and progress callback
+   * @public
+   */
   this.catch = function(callback) {
     promise.catch(callback);
     return this;
   };
 
+  /**
+   * Adds progress callback that is called for each iteration of collection.
+   * The callback will be called with resolved value, original value, all
+   * resolved values, and the current progress.
+   *
+   *       new Continuity([1, 2], function(value, resolve) {
+   *         resolve(value + 1);
+   *       }).progress(function(value, originalValue, values, progress) {
+   *
+   *         // First iteration
+   *         if ( progress == 1 ) {
+   *           assert(value == 2);
+   *           assert(originalValue == 1);
+   *           assert(values == [2]);
+   *           assert(progress == 1);
+   *         }
+   *
+   *         // Second iteration
+   *         else {
+   *           assert(value == 3);
+   *           assert(originalValue == 2);
+   *           assert(values == [2, 3]);
+   *           assert(progress == 2);
+   *         }
+   *
+   *       });
+   *
+   * @param {Function} asynchronous function that will be called with resolved value, original value, all resolved values, and the current progress
+   * @return {Continuity} for thenable methods and progress callback
+   * @public
+   */
   this.progress = function(callback) {
     values.map(function(value, index) {
       callback(value, originalCollection[index], values.slice(0, index + 1), index + 1);
