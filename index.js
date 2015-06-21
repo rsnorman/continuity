@@ -83,9 +83,9 @@
  * @public
  */
 var Continuity = function(originalCollection, iterationFn) {
-  var promise,
-      reject,
-      resolve,
+  var continuityPromise,
+      continuityResolve,
+      continuityReject,
       progressCallbacks,
       valueQueue,
       resolvedValues;
@@ -153,13 +153,13 @@ var Continuity = function(originalCollection, iterationFn) {
       if ( !isFinishedIterating() ) {
         collectionIterator();
       } else {
-        resolve(resolvedValues);
+        continuityResolve(resolvedValues);
       }
 
     });
 
     // Rejected iteration
-    iterationPromise.catch(reject);
+    iterationPromise.catch(continuityReject);
 
   }
 
@@ -169,9 +169,9 @@ var Continuity = function(originalCollection, iterationFn) {
    * Store resolve and reject functions so we can chain with a Promise-like
    * object.
    */
-  promise = new Promise(function(_resolve, _reject) {
-    resolve = _resolve;
-    reject = _reject;
+   continuityPromise = new Promise(function(resolve, reject) {
+    continuityResolve = resolve;
+    continuityReject = reject;
     collectionIterator();
   });
 
@@ -221,7 +221,7 @@ var Continuity = function(originalCollection, iterationFn) {
    * @public
    */
   this.then = function(resolveCallback, rejectCallback) {
-    promise.then(resolveCallback, rejectCallback);
+    continuityPromise.then(resolveCallback, rejectCallback);
     return this;
   };
 
@@ -250,7 +250,7 @@ var Continuity = function(originalCollection, iterationFn) {
    * @public
    */
   this.catch = function(callback) {
-    promise.catch(callback);
+    continuityPromise.catch(callback);
     return this;
   };
 
