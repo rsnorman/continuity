@@ -85,13 +85,17 @@ var Continuity = function(collection, iterationFn) {
 
     // Resolved iteration
     .then(function(value) {
-      collection.shift();
+
+      // push newest value
       values.push(value);
 
       // fire all progress callbacks on each iteration
       progressCallbacks.map(function(callback) {
-        callback(value, values, values.length);
+        callback(value, collection[0], values, values.length);
       });
+
+      // dequeue value in collection
+      collection.shift();
 
       // Still have more to run, execute another promise function
       if ( collection.length > 0 ) {
