@@ -55,6 +55,12 @@ The `progress` method will return the value resolved by the current executing pr
       }
     });
 
+**NOTE**: The progress callback can be attached even after Continuity
+has resolved. Such is the nature of promises that it matters not when
+the "thenable" functions are called, so `progress` works the same. The
+progess callback will execute for each resolved value just as it would
+if it were attached before any were resolved.
+
 ## Running Tests
 
 ```bash
