@@ -11,12 +11,28 @@
  * into asynchronous functions that resolve or reject promises. Each function
  * must wait until the previous one has finished before starting.
  *
+ * To create a Continuity object:
+ *
+ *       new Continuity([1, 2], function(value, resolve, reject) {
+ *
+ *         if ( isNaN(value) ) {
+ *           reject('Cannot operate on ' + value + ' because it\'s not a number');
+ *         } else {
+ *           resolve(value + 1);
+ *         }
+ *
+ *       });
+ *
  * The `then` method will return all the values resolved by the promises:
  *
  *       new Continuity([1, 2], function(value, resolve) {
+ *
  *         resolve(value + 1);
+ *
  *       }).then(function(values) {
+ *
  *         assert(values == [2, 3]);
+ *
  *       });
  *
  * The `progress` method will return the value resolved by the current
@@ -24,7 +40,9 @@
  * values and progress:
  *
  *       new Continuity([1, 2], function(value, resolve) {
+ *
  *         resolve(value + 1);
+ *
  *       }).progress(function(value, originalValue, values, progress) {
  *
  *         // First iteration
@@ -49,9 +67,13 @@
  * that caused the promise to reject, effectively stopping the iterator.
  *
  *       new Continuity([1, 2], function(value, resolve, reject) {
+ *
  *         reject('Dislike this value: ' + value);
+ *
  *       }).catch(function(error) {
+ *
  *         assert(error == 'Dislike this value: 1');
+ *
  *       });
  *
  * @param {Array} Array-like object that will be used to call function
@@ -81,8 +103,10 @@ var Continuity = function(originalCollection, iterationFn) {
    * Recursive function that queues up functions that resolve or reject promises
    * with values in collection
    *
-   * @param {Array} Array-like object that will be used to call promise returning function
-   * @param {Function} function that returns promises and will be called with array values
+   * @param {Array} Array-like object that will be used to call promise
+   *                returning function
+   * @param {Function} function that returns promises and will be called with
+   *                   array values
    * @param {Array} values that have been returned from promises
    * @private
    */
@@ -136,18 +160,46 @@ var Continuity = function(originalCollection, iterationFn) {
   });
 
   /**
+   * @method then
+   *
    * Adds resolve and reject callbacks that behave exactly like Promise `then` method
    *
+   * Without reject callback:
+   *
    *       new Continuity([1, 2], function(value, resolve) {
+   *
    *         resolve(value + 1);
+   *
    *       }).then(function(values) {
+   *
    *         assert(values == [2, 3]);
-   *       }, function(error) {
-   *         console.warn("There was an error!", error);
+   *
    *       });
    *
-   * @param {Function} asynchronous function that will be called with resolved value
-   * @param {Function} asynchronous function that will be called with error value
+   * With reject callback:
+   *
+   *       new Continuity([1, 2, 'George'], function(value, resolve, reject) {
+   *
+   *         if ( isNaN(value) ) {
+   *           reject('Cannot operate on ' + value + ' because it\'s not a number');
+   *         } else {
+   *           resolve(value + 1);
+   *         }
+   *
+   *       }).then(function(values) {
+   *
+   *         assert(values == [2, 3]);
+   *
+   *       }, function(error) {
+   *
+   *         console.warn("There was an error!", error);
+   *
+   *       });
+   *
+   * @param {Function} asynchronous function that will be called with
+   *                   resolved value
+   * @param {Function} asynchronous function that will be called with
+   *                   error value
    * @return {Continuity} for thenable methods and progress callback
    * @public
    */
@@ -157,15 +209,26 @@ var Continuity = function(originalCollection, iterationFn) {
   };
 
   /**
+   * @method catch
+   *
    * Adds reject callback that behave exactly like Promise `catch` method
    *
-   *       new Continuity([1, 2], function(value, resolve) {
-   *         resolve(value + 1);
+   *       new Continuity([1, 2], function(value, resolve, reject) {
+   *
+   *         if ( isNaN(value) ) {
+   *           reject('Cannot operate on ' + value + ' because it\'s not a number');
+   *         } else {
+   *           resolve(value + 1);
+   *         }
+   *
    *       }).catch(function(error) {
+   *
    *         console.warn("There was an error!", error);
+   *
    *       });
    *
-   * @param {Function} asynchronous function that will be called with error value
+   * @param {Function} asynchronous function that will be called with
+   *                   error value
    * @return {Continuity} for thenable methods and progress callback
    * @public
    */
@@ -175,12 +238,16 @@ var Continuity = function(originalCollection, iterationFn) {
   };
 
   /**
+   * @method progress
+   *
    * Adds progress callback that is called for each iteration of collection.
    * The callback will be called with resolved value, original value, all
    * resolved values, and the current progress.
    *
    *       new Continuity([1, 2], function(value, resolve) {
+   *
    *         resolve(value + 1);
+   *
    *       }).progress(function(value, originalValue, values, progress) {
    *
    *         // First iteration
@@ -201,7 +268,9 @@ var Continuity = function(originalCollection, iterationFn) {
    *
    *       });
    *
-   * @param {Function} asynchronous function that will be called with resolved value, original value, all resolved values, and the current progress
+   * @param {Function} asynchronous function that will be called with resolved
+   *                   value, original value, all resolved values, and the
+   *                   current progress
    * @return {Continuity} for thenable methods and progress callback
    * @public
    */
