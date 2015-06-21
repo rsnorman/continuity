@@ -32,15 +32,16 @@ The `catch` method will execute if *any* of the Promises fail to resolve:
 
 ### Progress Method
 
-The `progress` method will return the value resolved by the current
-executing promise along with all the returned values and progress:
+The `progress` method will return the value resolved by the current executing promise along with the original value, all calculated values and progress:
 
     new Continuity([1, 2], function(value, resolve) {
       resolve(value + 1);
-    }).progress(function(value, values, progress) {
+    }).progress(function(value, originalValue, values, progress) {
+
       // First iteration
       if ( progress == 1 ) {
         assert(value == 2);
+        assert(originalValue == 1);
         assert(values == [2]);
         assert(progress == 1);
       }
@@ -48,6 +49,7 @@ executing promise along with all the returned values and progress:
       // Second iteration
       else {
         assert(value == 3);
+        assert(originalValue == 2);
         assert(values == [2, 3]);
         assert(progress == 2);
       }

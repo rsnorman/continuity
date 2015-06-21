@@ -34,10 +34,14 @@ describe('Continuity', function() {
       errorMessage = message;
       done();
     })
-    .progress(function(_value, _values) {
-      progress.push({value: _value, values: _values});
+    .progress(function(_value, _originalValue, _values) {
+      progress.push({
+        value: _value,
+        originalValue: _originalValue,
+        values: _values
+      });
     })
-    .progress(function(_value, _values, _progressCount) {
+    .progress(function(_value, _originalValue, _values, _progressCount) {
       progressCount = _progressCount;
     });
   }
@@ -53,6 +57,7 @@ describe('Continuity', function() {
 
     it('calls progress callback for element', function() {
       assert(progress[0].value == 11);
+      assert(progress[0].originalValue == 1);
       assert(progress[0].values[0] == 11);
     });
 
@@ -90,10 +95,13 @@ describe('Continuity', function() {
 
     it('calls progress callback for all elements', function() {
       assert(progress[0].value == 11);
+      assert(progress[0].originalValue == 1);
       assert(progress[0].values[0] == 11);
       assert(progress[1].value == 20);
+      assert(progress[1].originalValue == 10);
       assert(progress[1].values[1] == 20);
       assert(progress[2].value == -13);
+      assert(progress[2].originalValue == -23);
       assert(progress[2].values[2] == -13);
     });
 
