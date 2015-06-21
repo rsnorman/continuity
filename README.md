@@ -10,11 +10,13 @@ and Promise resolving/rejecting function:
 ```js
 new Continuity([1, 2], function(value, resolve, reject) {
 
-  if ( isNaN(value) ) {
-    reject('Cannot operate on ' + value + ' because it\'s not a number');
-  } else {
-    resolve(value + 1);
-  }
+  setTimeout(function() {
+    if ( isNaN(value) ) {
+      reject('Cannot operate on ' + value + ' because it\'s not a number');
+    } else {
+      resolve(value + 1);
+    }
+  }, 1000);
 
 });
 ```
@@ -32,7 +34,9 @@ Without reject callback:
 ```js
 new Continuity([1, 2], function(value, resolve) {
 
-  resolve(value + 1);
+  setTimeout(function() {
+    resolve(value + 1);
+  }, 1000);
 
 }).then(function(values) {
 
@@ -46,11 +50,13 @@ With reject callback:
 ```js
 new Continuity([1, 2, 'George'], function(value, resolve, reject) {
 
-  if ( isNaN(value) ) {
-    reject('Cannot operate on ' + value + ' because it\'s not a number');
-  } else {
-    resolve(value + 1);
-  }
+  setTimeout(function() {
+    if ( isNaN(value) ) {
+      reject('Cannot operate on ' + value + ' because it\'s not a number');
+    } else {
+      resolve(value + 1);
+    }
+  }, 1000);
 
 }).then(function(values) {
 
@@ -69,7 +75,9 @@ the exact same syntax as regular Promises:
 ```js
 new Continuity([1, 2], function(value, resolve, reject) {
 
-  reject('Dislike this value: ' + value);
+  setTimeout(function() {
+    reject('Dislike this value: ' + value);
+  }, 1000);
 
 }).catch(function(error) {
 
@@ -88,7 +96,9 @@ promise along with the original value, all calculated values and progress:
 ```js
 new Continuity([1, 2], function(value, resolve) {
 
-  resolve(value + 1);
+  setTimeout(function() {
+    resolve(value + 1);
+  }, 1000);
 
 }).progress(function(value, originalValue, values, progress) {
 
