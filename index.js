@@ -76,7 +76,7 @@
  *
  *       });
  *
- * @param {Array} Array-like object that will be used to call function
+ * @param {Array} collection that will be used to call function
  * @param {Function} asynchronous function that will be called with array value
  * @return {Continuity} for thenable methods and progress callback
  * @public
@@ -86,7 +86,7 @@ var Continuity = function(originalCollection, iterationFn) {
       reject,
       resolve,
       progressCallbacks,
-      collection,
+      valueQueue,
       values;
 
   // Empty array of progress callbacks
@@ -95,56 +95,68 @@ var Continuity = function(originalCollection, iterationFn) {
   // Initialize empty array of values
   values = [];
 
-  // Clone collection
-  collection = Array.prototype.slice.call(originalCollection);
+  // Clone collection to create queue of values to call iteration function
+  valueQueue = Array.prototype.slice.call(originalCollection);
 
+
+  /**
+   * Returns whether or not there are any values left in the queue
+   *
+   * @return {Bool} true if valueQueue length is greater than zero,
+   *                false otherwise
+   * @private
+   */
+  function isFinishedIterating() {
+    return valueQueue.length == 0;
+  }
+
+  /**
+   * Pushes new value into values array and fires all progress callbacks
+   *
+   * @param {Any} The value that is resolved from asynchronous function
+   * @private
+   */
+  function onSuccessIteration(value) {
+    values.push(value); // push newest value
+
+    // fire all progress callbacks on each iteration
+    progressCallbacks.map(function(callback) {
+      callback(
+        value, originalCollection[values.length -1], values, values.length
+      );
+    });
+  }
 
   /**
    * Recursive function that queues up functions that resolve or reject promises
    * with values in collection
    *
-   * @param {Array} Array-like object that will be used to call promise
-   *                returning function
-   * @param {Function} function that returns promises and will be called with
-   *                   array values
-   * @param {Array} values that have been returned from promises
    * @private
    */
-  function collectionIterator(collection) {
+  function collectionIterator() {
+    var iterationPromise;
 
-    // Create iteration promise to pass resolver and rejecter into function
-    new Promise(function(iterationResolve, iterationReject) {
-      iterationFn(collection[0], iterationResolve, iterationReject)
-    })
+    // Create iteration promise to pass resolver and rejecter into function. The
+    // iteration function is called with the first element of the collection.
+    iterationPromise = new Promise(function(iterationResolve, iterationReject) {
+      iterationFn(valueQueue.shift(), iterationResolve, iterationReject)
+    });
 
     // Resolved iteration
-    .then(function(value) {
+    iterationPromise.then(function(value) {
+      onSuccessIteration(value);
 
-      // push newest value
-      values.push(value);
-
-      // fire all progress callbacks on each iteration
-      progressCallbacks.map(function(callback) {
-        callback(value, collection[0], values, values.length);
-      });
-
-      // dequeue value in collection
-      collection.shift();
-
-      // Still have more to run, execute another promise function
-      if ( collection.length > 0 ) {
-        collectionIterator(collection, values);
-      }
-
-      // All done, resolve promise
-      else {
+      if ( !isFinishedIterating() ) {
+        collectionIterator();
+      } else {
         resolve(values);
       }
 
-    })
+    });
 
     // Rejected iteration
-    .catch(reject);
+    iterationPromise.catch(reject);
+
   }
 
 
@@ -156,13 +168,14 @@ var Continuity = function(originalCollection, iterationFn) {
   promise = new Promise(function(_resolve, _reject) {
     resolve = _resolve;
     reject = _reject;
-    collectionIterator(collection, []);
+    collectionIterator();
   });
 
   /**
    * @method then
    *
-   * Adds resolve and reject callbacks that behave exactly like Promise `then` method
+   * Adds resolve and reject callbacks that behave exactly like Promise
+   * `then` method
    *
    * Without reject callback:
    *
@@ -276,8 +289,11 @@ var Continuity = function(originalCollection, iterationFn) {
    */
   this.progress = function(callback) {
     values.map(function(value, index) {
-      callback(value, originalCollection[index], values.slice(0, index + 1), index + 1);
+      callback(
+        value, originalCollection[index], values.slice(0, index + 1), index + 1
+      );
     });
+
     progressCallbacks.push(callback);
     return this;
   };
