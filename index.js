@@ -77,7 +77,8 @@
  *       });
  *
  * @param {Array} collection that will be used to call function
- * @param {Function} asynchronous function that will be called with array value
+ * @param {Function} asynchronous function that will be called for each value
+ *                   in the collection
  * @return {Continuity} for thenable methods and progress callback
  * @public
  */
@@ -87,13 +88,13 @@ var Continuity = function(originalCollection, iterationFn) {
       resolve,
       progressCallbacks,
       valueQueue,
-      values;
+      resolvedValues;
 
   // Empty array of progress callbacks
   progressCallbacks = [];
 
   // Initialize empty array of values
-  values = [];
+  resolvedValues = [];
 
   // Clone collection to create queue of values to call iteration function
   valueQueue = Array.prototype.slice.call(originalCollection);
@@ -116,13 +117,16 @@ var Continuity = function(originalCollection, iterationFn) {
    * @param {Any} The value that is resolved from asynchronous function
    * @private
    */
-  function onSuccessIteration(value) {
-    values.push(value); // push newest value
+  function onSuccessIteration(resolvedValue) {
+    resolvedValues.push(resolvedValue); // push newest value
 
     // fire all progress callbacks on each iteration
     progressCallbacks.map(function(callback) {
       callback(
-        value, originalCollection[values.length -1], values, values.length
+        resolvedValue,
+        originalCollection[resolvedValues.length -1],
+        resolvedValues,
+        resolvedValues.length
       );
     });
   }
@@ -143,13 +147,13 @@ var Continuity = function(originalCollection, iterationFn) {
     });
 
     // Resolved iteration
-    iterationPromise.then(function(value) {
-      onSuccessIteration(value);
+    iterationPromise.then(function(resolvedValue) {
+      onSuccessIteration(resolvedValue);
 
       if ( !isFinishedIterating() ) {
         collectionIterator();
       } else {
-        resolve(values);
+        resolve(resolvedValues);
       }
 
     });
@@ -288,9 +292,12 @@ var Continuity = function(originalCollection, iterationFn) {
    * @public
    */
   this.progress = function(callback) {
-    values.map(function(value, index) {
+    resolvedValues.map(function(resolvedValue, index) {
       callback(
-        value, originalCollection[index], values.slice(0, index + 1), index + 1
+        resolvedValue,
+        originalCollection[index],
+        resolvedValues.slice(0, index + 1),
+        index + 1
       );
     });
 
