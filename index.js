@@ -58,15 +58,23 @@
  * @return {Continuity} for thenable methods and progress callback
  * @public
  */
-var Continuity = function(collection, iterationFn) {
+var Continuity = function(originalCollection, iterationFn) {
   var continuity,
       promise,
       reject,
       resolve,
-      progressCallbacks;
+      progressCallbacks,
+      collection,
+      values;
 
   // Empty array of progress callbacks
   progressCallbacks = [];
+
+  // Initialize empty array of values
+  values = [];
+
+  // Clone collection
+  collection = Array.prototype.slice.call(originalCollection);
 
 
   /**
@@ -78,9 +86,7 @@ var Continuity = function(collection, iterationFn) {
    * @param {Array} values that have been returned from promises
    * @private
    */
-  function collectionIterator(collection, values) {
-    collection = Array.prototype.slice.call(collection);
-    values = Array.prototype.slice.call(values);
+  function collectionIterator(collection) {
 
     // Create iteration promise to pass resolver and rejecter into function
     new Promise(function(iterationResolve, iterationReject) {
@@ -140,6 +146,9 @@ var Continuity = function(collection, iterationFn) {
   };
 
   this.progress = function(callback) {
+    values.map(function(value, index) {
+      callback(value, originalCollection[index], values.slice(0, index + 1), index + 1);
+    });
     progressCallbacks.push(callback);
     return this;
   };
