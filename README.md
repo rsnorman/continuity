@@ -78,7 +78,7 @@ new Continuity([1, 2], function(value, resolve, reject) {
 });
 ```
 
-**NOTE**: Once a Promise is reject, iteration over the array will stop.
+**NOTE**: Once a Promise is rejected, iteration over the array will stop.
 
 ### Progress Method
 
@@ -116,6 +116,9 @@ has resolved. Such is the nature of promises that it matters not when
 the "thenable" functions are called, so `progress` works the same. The
 progress callback will execute for each resolved value just as it would
 if it were attached before any were resolved.
+
+**Another Note**: If a promise is rejected, the iteration that caused the
+failure state will not fire a progress call.
 
 ## Running Tests
 

@@ -1,7 +1,7 @@
 {
   "name": "promise-continuity",
   "description": "Sequential promise iteration made easy",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "author": "Ryan Norman <rsnorman15@gmail.com> (http://github.com/rsnorman)",
   "keywords": ["promise", "chain", "sequential", "array"],
   "repository" : {
