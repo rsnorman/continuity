@@ -7,11 +7,34 @@ describe('Continuity', function() {
   var values;
   var errorMessage, superBadErrorMessage;
   var progress, progressCount;
+  var continuity;
 
   beforeEach(function() {
     initialValues = [1];
     progress = [];
   });
+
+  function createContinuityObject(willRejectWith, withTimeout) {
+    return new Continuity(initialValues, function(value, resolve, reject) {
+      if ( willRejectWith != value ) {
+        if ( !withTimeout ) {
+          resolve(value + 10);
+        } else {
+          setTimeout(function() {
+            resolve(value + 10);
+          }, 50);
+        }
+      } else {
+        if ( !withTimeout ) {
+          reject('Rejected: ' + value);
+        } else {
+          setTimeout(function() {
+            reject('Rejected: ' + value);
+          }, 50);
+        }
+      }
+    });
+  }
 
   function runContinuitySequence(done) {
     return new Continuity(initialValues, function(value, resolve, reject) {
@@ -29,7 +52,8 @@ describe('Continuity', function() {
     .then(function(_values) {
       values = _values;
       done();
-    }, function(message) {
+    })
+    .then(function(){}, function(message) {
       superBadErrorMessage = message + '!!!';
     })
     .catch(function(message) {
@@ -47,6 +71,23 @@ describe('Continuity', function() {
       progressCount = _progressCount;
     });
   }
+
+  describe('#then', function() {
+    describe('with values all resolved', function() {
+      beforeEach(function(done) {
+        continuity = createContinuityObject()
+        continuity.progress(function(value) {
+          done();
+        });
+      });
+
+      it('runs then callback function', function() {
+        continuity.then(function(values) {
+          assert(values[0], 11);
+        });
+      });
+    });
+  });
 
   describe('with one element in collection', function() {
     beforeEach(function(done){
@@ -183,30 +224,6 @@ describe('Continuity', function() {
   });
 
   describe('#queue', function() {
-    var continuity;
-
-    function createContinuityObject(willRejectWith, withTimeout) {
-      return new Continuity(initialValues, function(value, resolve, reject) {
-        if ( willRejectWith != value ) {
-          if ( !withTimeout ) {
-            resolve(value + 10);
-          } else {
-            setTimeout(function() {
-              resolve(value + 10);
-            }, 50);
-          }
-        } else {
-          if ( !withTimeout ) {
-            reject('Rejected: ' + value);
-          } else {
-            setTimeout(function() {
-              reject('Rejected: ' + value);
-            }, 50);
-          }
-        }
-      });
-    }
-
     describe('with thenable callbacks not attached', function() {
       var progressValues;
 
@@ -244,7 +261,7 @@ describe('Continuity', function() {
 
         describe('with catch method', function() {
           beforeEach(function(done) {
-            continuity = createContinuityObject(5);
+            continuity = createContinuityObject(1);
 
             continuity.progress(function(value) {
               progressValues.push(value);
@@ -261,7 +278,7 @@ describe('Continuity', function() {
 
 
           it('calls iteration function with added value', function() {
-            assert.equal(errorMessage, 'Rejected: 5');
+            assert.equal(errorMessage, 'Rejected: 1');
           });
         });
       });
