@@ -112,7 +112,6 @@ describe('Continuity', function() {
     });
   });
 
-
   describe('with error while calculating values', function() {
     beforeEach(function(done) {
       initialValues = [1, 'Not a number', -23];
@@ -182,4 +181,166 @@ describe('Continuity', function() {
       assert(progressSum == 3);
     });
   });
+
+  describe('#queue', function() {
+    var continuity;
+
+    function createContinuityObject(willRejectWith, withTimeout) {
+      return new Continuity(initialValues, function(value, resolve, reject) {
+        if ( willRejectWith != value ) {
+          if ( !withTimeout ) {
+            resolve(value + 10);
+          } else {
+            setTimeout(function() {
+              resolve(value + 10);
+            }, 50);
+          }
+        } else {
+          if ( !withTimeout ) {
+            reject('Rejected: ' + value);
+          } else {
+            setTimeout(function() {
+              reject('Rejected: ' + value);
+            }, 50);
+          }
+        }
+      });
+    }
+
+    describe('with thenable callbacks not attached', function() {
+      var progressValues;
+
+      beforeEach(function() {
+        progressValues = [];
+      });
+
+      describe('with all values resolved', function() {
+        describe('with then method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject()
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
+            });
+
+            setTimeout(function() {
+              continuity.queue(5);
+              continuity.then(function(_values) {
+                values = _values;
+                done();
+              });
+            }, 50);
+          });
+
+          it('calls iteration function with added value', function() {
+            assert.equal(values[0], 11);
+            assert.equal(values[1], 15);
+          });
+
+          it('call progress function for added value', function() {
+            assert.equal(progressValues[1], 15);
+          });
+        });
+
+        describe('with catch method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(5);
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
+            });
+
+            setTimeout(function() {
+              continuity.queue(5);
+              continuity.catch(function(_errorMessage) {
+                errorMessage = _errorMessage;
+                done();
+              });
+            }, 50);
+          });
+
+
+          it('calls iteration function with added value', function() {
+            assert.equal(errorMessage, 'Rejected: 5');
+          });
+        });
+      });
+
+      describe('with current values still resolving', function() {
+        describe('with then method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(false, true);
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
+              if ( value == 15 ) {
+                done();
+              }
+            });
+
+            continuity.queue(5);
+            continuity.then(function(_values) {
+              values = _values;
+            });
+          });
+
+          it('calls iteration function with added value', function() {
+            assert.equal(values[0], 11);
+            assert.equal(values[1], 15);
+          });
+
+          it('call progress function for added value', function() {
+            assert.equal(progressValues[1], 15);
+          });
+        });
+
+        describe('with catch method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(5, true);
+
+            setTimeout(function() {
+              continuity.queue(5);
+              continuity.catch(function(_errorMessage) {
+                errorMessage = _errorMessage;
+                done();
+              });
+            }, 50);
+          });
+
+
+          it('calls iteration function with added value', function() {
+            assert.equal(errorMessage, 'Rejected: 5');
+          });
+        });
+      });
+    });
+
+    describe('with then callback attached', function() {
+      beforeEach(function() {
+        continuity = createContinuityObject();
+        continuity.then(function(){});
+      });
+
+      it('throws an error', function() {
+        assert.throws(function() {
+          continuity.queue(5);
+        }, 'All values resolved, cannot push another value');
+      });
+    });
+
+    describe('with catch callback attached', function() {
+      beforeEach(function() {
+        initialValues = ['George'];
+        continuity = createContinuityObject();
+        continuity.catch(function(){});
+      });
+
+      it('throws an error', function() {
+        assert.throws(function() {
+          continuity.queue(5);
+        }, 'All values resolved, cannot push another value');
+      });
+    });
+  });
+
 });

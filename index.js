@@ -96,7 +96,9 @@ var Continuity = function(originalCollection, iterationFn) {
       continuityReject,
       progressCallbacks,
       valueQueue,
-      resolvedValues;
+      resolvedValues,
+      isRunningPromise,
+      errorValue;
 
   // Empty array of progress callbacks
   progressCallbacks = [];
@@ -116,7 +118,7 @@ var Continuity = function(originalCollection, iterationFn) {
    * @private
    */
   function isFinishedIterating() {
-    return valueQueue.length == 0;
+    return valueQueue.length == 0 && !isRunningPromise;
   }
 
   /**
@@ -126,6 +128,8 @@ var Continuity = function(originalCollection, iterationFn) {
    * @private
    */
   function onSuccessIteration(resolvedValue) {
+    isRunningPromise = false;
+
     resolvedValues.push(resolvedValue); // push newest value
 
     // fire all progress callbacks on each iteration
@@ -148,6 +152,8 @@ var Continuity = function(originalCollection, iterationFn) {
   function collectionIterator() {
     var iterationPromise;
 
+    isRunningPromise = true;
+
     // Create iteration promise to pass resolver and rejecter into function. The
     // iteration function is called with the first element of the collection.
     iterationPromise = new Promise(function(iterationResolve, iterationReject) {
@@ -161,27 +167,37 @@ var Continuity = function(originalCollection, iterationFn) {
       if ( !isFinishedIterating() ) {
         collectionIterator();
       } else {
-        continuityResolve(resolvedValues);
+        if ( !!continuityResolve ) {
+          continuityResolve(resolvedValues);
+        }
       }
 
     });
 
     // Rejected iteration
-    iterationPromise.catch(continuityReject);
+    iterationPromise.catch(function(_errorValue) {
+      errorValue = _errorValue;
+      isRunningPromise = false;
+
+      if ( !!continuityReject ) {
+        continuityReject(errorValue);
+      }
+    });
 
   }
-
 
   /**
    * Create promise to resolve once all other promises are resolved.
    * Store resolve and reject functions so we can chain with a Promise-like
    * object.
    */
-   continuityPromise = new Promise(function(resolve, reject) {
-    continuityResolve = resolve;
-    continuityReject = reject;
-    collectionIterator();
-  });
+  function createContinuityPromise() {
+    continuityPromise = new Promise(function(resolve, reject) {
+      continuityResolve = resolve;
+      continuityReject = reject;
+    });
+  }
+
 
   /**
    * @method then
@@ -233,7 +249,16 @@ var Continuity = function(originalCollection, iterationFn) {
    * @public
    */
   this.then = function(resolveCallback, rejectCallback) {
+    if ( !continuityPromise ) {
+      createContinuityPromise();
+    }
+
     continuityPromise.then(resolveCallback, rejectCallback);
+
+    if ( isFinishedIterating() ) {
+      continuityResolve(resolvedValues);
+    }
+
     return this;
   };
 
@@ -264,7 +289,16 @@ var Continuity = function(originalCollection, iterationFn) {
    * @public
    */
   this.catch = function(callback) {
+    if ( !continuityPromise ) {
+      createContinuityPromise();
+    }
+
     continuityPromise.catch(callback);
+
+    if ( !!errorValue ) {
+      continuityReject(errorValue);
+    }
+
     return this;
   };
 
@@ -320,6 +354,37 @@ var Continuity = function(originalCollection, iterationFn) {
     progressCallbacks.push(callback);
     return this;
   };
+
+  /**
+   * @method queue
+   *
+   * Queues value that will trigger another asynchronous function.
+   * Cannot queue another value if then or catch callback have been
+   * attached since promise can only be resolved once.
+   *
+   * @param {Any} value that will trigger another asynchronous function
+   * @public
+   */
+  this.queue = function(value) {
+    var hasResolvedAllValues;
+
+    if ( !!continuityPromise ) {
+      throw new Error('All values resolved, cannot push another value');
+    }
+
+    hasResolvedAllValues = isFinishedIterating();
+
+    valueQueue.push(value);
+    originalCollection.push(value);
+
+    if ( hasResolvedAllValues ) {
+      collectionIterator();
+    }
+  };
+
+
+  // Start iterating therough collection
+  collectionIterator();
 
 };
 
