@@ -88,7 +88,7 @@ new Continuity([1, 2], function(value, resolve, reject) {
 
 **NOTE**: Once a Promise is rejected, iteration over the array will stop.
 
-### Progress Method
+### Progress Callback
 
 The `progress` method will return the value resolved by the current executing
 promise along with the original value, all calculated values and progress:
@@ -129,6 +129,32 @@ if it were attached before any were resolved.
 
 **Another Note**: If a promise is rejected, the iteration that caused the
 failure state will not fire a progress call.
+
+### Pushing Extra Values
+Sometimes the collection may need extra values even while it's running or
+having been completely resolved. Continuity allows queuing extra values using
+the `queue` method.
+
+```js
+var continuity = new Continuity([1, 2], function(value, resolve) {
+
+  setTimeout(function() {
+    resolve(value + 1);
+  }, 1000);
+
+});
+
+continuity.push(3);
+
+continuity.then(function(values) {
+  assert(values == [2, 3, 4]);
+});
+```
+
+**WARNING**: Values cannot be queued if any thenable callbacks have been
+attached. This is because there is no guarantee that the promise hasn't already
+resolved and cannot resolve twice. An error will be thrown if extra values are
+queued.
 
 ## Running Tests
 
