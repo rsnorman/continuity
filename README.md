@@ -144,7 +144,7 @@ var continuity = new Continuity([1, 2], function(value, resolve) {
 
 });
 
-continuity.push(3);
+continuity.queue(3);
 
 continuity.then(function(values) {
   assert(values == [2, 3, 4]);
