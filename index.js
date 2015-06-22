@@ -97,7 +97,8 @@ var Continuity = function(originalCollection, iterationFn) {
       progressCallbacks,
       valueQueue,
       resolvedValues,
-      isRunningPromise;
+      isRunningPromise,
+      errorValue;
 
   // Empty array of progress callbacks
   progressCallbacks = [];
@@ -174,7 +175,14 @@ var Continuity = function(originalCollection, iterationFn) {
     });
 
     // Rejected iteration
-    iterationPromise.catch(continuityReject);
+    iterationPromise.catch(function(_errorValue) {
+      errorValue = _errorValue;
+      isRunningPromise = false;
+
+      if ( !!continuityReject ) {
+        continuityReject(errorValue);
+      }
+    });
 
   }
 
@@ -284,7 +292,13 @@ var Continuity = function(originalCollection, iterationFn) {
     if ( !continuityPromise ) {
       createContinuityPromise();
     }
+
     continuityPromise.catch(callback);
+
+    if ( !!errorValue ) {
+      continuityReject(errorValue);
+    }
+
     return this;
   };
 

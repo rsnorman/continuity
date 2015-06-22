@@ -196,59 +196,125 @@ describe('Continuity', function() {
         progressValues = [];
       });
 
+      function createContinuityObject(willRejectWith, withTimeout) {
+        return new Continuity(initialValues, function(value, resolve, reject) {
+          if ( willRejectWith != value ) {
+            if ( !withTimeout ) {
+              resolve(value + 10);
+            } else {
+              setTimeout(function() {
+                resolve(value + 10);
+              }, 50);
+            }
+          } else {
+            if ( !withTimeout ) {
+              reject('Rejected: ' + value);
+            } else {
+              setTimeout(function() {
+                reject('Rejected: ' + value);
+              }, 50);
+            }
+          }
+        });
+      }
+
       describe('with all values resolved', function() {
-        beforeEach(function(done) {
-          continuity = new Continuity(initialValues, function(value, resolve) {
-            resolve(value + 10);
-          }).progress(function(value) {
-            progressValues.push(value);
+        describe('with then method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject()
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
+            });
+
+            setTimeout(function() {
+              continuity.queue(5);
+              continuity.then(function(_values) {
+                values = _values;
+                done();
+              });
+            }, 50);
           });
 
-          setTimeout(function() {
-            continuity.queue(5);
-            continuity.then(function(_values) {
-              values = _values;
-              done();
+          it('calls iteration function with added value', function() {
+            assert.equal(values[0], 11);
+            assert.equal(values[1], 15);
+          });
+
+          it('call progress function for added value', function() {
+            assert.equal(progressValues[1], 15);
+          });
+        });
+
+        describe('with catch method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(5);
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
             });
-          }, 50);
-        });
 
-        it('calls iteration function with added value', function() {
-          assert.equal(values[0], 11);
-          assert.equal(values[1], 15);
-        });
+            setTimeout(function() {
+              continuity.queue(5);
+              continuity.catch(function(_errorMessage) {
+                errorMessage = _errorMessage;
+                done();
+              });
+            }, 50);
+          });
 
-        it('call progress funtion for added value', function() {
-          assert.equal(progressValues[1], 15);
+
+          it('calls iteration function with added value', function() {
+            assert.equal(errorMessage, 'Rejected: 5');
+          });
         });
       });
 
       describe('with current values still resolving', function() {
-        beforeEach(function(done) {
-          continuity = new Continuity(initialValues, function(value, resolve) {
+        describe('with then method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(false, true);
+
+            continuity.progress(function(value) {
+              progressValues.push(value);
+              if ( value == 15 ) {
+                done();
+              }
+            });
+
+            continuity.queue(5);
+            continuity.then(function(_values) {
+              values = _values;
+            });
+          });
+
+          it('calls iteration function with added value', function() {
+            assert.equal(values[0], 11);
+            assert.equal(values[1], 15);
+          });
+
+          it('call progress function for added value', function() {
+            assert.equal(progressValues[1], 15);
+          });
+        });
+
+        describe('with catch method', function() {
+          beforeEach(function(done) {
+            continuity = createContinuityObject(5, true);
+
             setTimeout(function() {
-              resolve(value + 10);
+              continuity.queue(5);
+              continuity.catch(function(_errorMessage) {
+                errorMessage = _errorMessage;
+                done();
+              });
             }, 50);
-          }).progress(function(value) {
-            progressValues.push(value);
-            if ( value == 15 ) {
-              done();
-            }
           });
 
-          continuity.queue(5);
-          continuity.then(function(_values) {
-            values = _values;
+
+          it('calls iteration function with added value', function() {
+            assert.equal(errorMessage, 'Rejected: 5');
           });
-        });
-
-        it('calls iteration function with added value', function() {
-          assert.equal(values[0], 11);
-          assert.equal(values[1], 15);
-        });
-
-        it('call progress funtion for added value', function() {
-          assert.equal(progressValues[1], 15);
         });
       });
     });
