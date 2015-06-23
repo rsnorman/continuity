@@ -383,7 +383,7 @@ var Continuity = function(originalCollection, iterationFn) {
   };
 
 
-  // Start iterating therough collection
+  // Start iterating through collection
   collectionIterator();
 
 };
