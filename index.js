@@ -98,7 +98,11 @@ var Continuity = function(originalCollection, iterationFn) {
       valueQueue,
       resolvedValues,
       isRunningPromise,
-      errorValue;
+      errorValue,
+      _continuity;
+
+  // Store scope
+  _continuity = this;
 
   // Empty array of progress callbacks
   progressCallbacks = [];
@@ -259,7 +263,7 @@ var Continuity = function(originalCollection, iterationFn) {
       continuityResolve(resolvedValues);
     }
 
-    return this;
+    return _continuity;
   };
 
   /**
@@ -299,7 +303,7 @@ var Continuity = function(originalCollection, iterationFn) {
       continuityReject(errorValue);
     }
 
-    return this;
+    return _continuity;
   };
 
   /**
@@ -352,7 +356,7 @@ var Continuity = function(originalCollection, iterationFn) {
     });
 
     progressCallbacks.push(callback);
-    return this;
+    return _continuity;
   };
 
   /**
