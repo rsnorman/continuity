@@ -296,7 +296,6 @@ var Continuity = function(originalCollection, iterationFn) {
     if ( !continuityPromise ) {
       createContinuityPromise();
     }
-
     continuityPromise.catch(callback);
 
     if ( !!errorValue ) {
