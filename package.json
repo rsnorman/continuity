@@ -1,7 +1,7 @@
 {
   "name": "promise-continuity",
   "description": "Sequential promise iteration made easy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Ryan Norman <rsnorman15@gmail.com> (http://github.com/rsnorman)",
   "keywords": ["promise", "chain", "sequential", "array"],
   "repository" : {
@@ -12,7 +12,6 @@
   "devDependencies": {
     "istanbul": "0.3.15",
     "mocha": "2.2.5",
-    "should": "6.0.3",
     "supertest": "1.0.1"
   },
   "license": "MIT",

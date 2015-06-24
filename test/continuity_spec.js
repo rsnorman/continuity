@@ -1,252 +1,440 @@
 var assert = require('assert');
 var Continuity = require('..');
-var should = require('should');
 
 describe('Continuity', function() {
-  var initialValues;
-  var values;
-  var errorMessage, superBadErrorMessage;
-  var progress, progressCount;
+  var values, sum, error, progressValues;
   var continuity;
 
   beforeEach(function() {
-    initialValues = [1];
-    progress = [];
+    values = null;
+    progressValues = [];
+    error = null
   });
 
-  function createContinuityObject(willRejectWith, withTimeout) {
-    return new Continuity(initialValues, function(value, resolve, reject) {
-      if ( willRejectWith != value ) {
-        if ( !withTimeout ) {
-          resolve(value + 10);
-        } else {
-          setTimeout(function() {
-            resolve(value + 10);
-          }, 50);
-        }
-      } else {
-        if ( !withTimeout ) {
-          reject('Rejected: ' + value);
-        } else {
-          setTimeout(function() {
-            reject('Rejected: ' + value);
-          }, 50);
-        }
-      }
+  function setValues(resolvedValues) {
+    values = resolvedValues;
+  }
+
+  function sumValues(resolvedValues) {
+    sum = 0;
+    resolvedValues.map(function(value) {
+      sum += value;
     });
   }
 
-  function runContinuitySequence(done) {
-    return new Continuity(initialValues, function(value, resolve, reject) {
-      if ( !isNaN(value) ) {
-        if ( value !== 100 ) {
-          resolve(value + 10);
-        } else {
-          // don't do anything to simulate long running function
-          done();
-        }
-      } else {
-        reject('Not a number dummy');
-      }
-    })
-    .then(function(_values) {
-      values = _values;
-      done();
-    })
-    .then(function(){}, function(message) {
-      superBadErrorMessage = message + '!!!';
-    })
-    .catch(function(message) {
-      errorMessage = message;
-      done();
-    })
-    .progress(function(_value, _originalValue, _values) {
-      progress.push({
-        value: _value,
-        originalValue: _originalValue,
-        values: _values
-      });
-    })
-    .progress(function(_value, _originalValue, _values, _progressCount) {
-      progressCount = _progressCount;
+  function collectProgressValues(resolvedValue) {
+    progressValues.push({
+      resolvedValue: resolvedValue
     });
   }
+
+  function setError(_error) {
+    error = _error;
+  }
+
+  function createContinuity(startValues) {
+    continuity = new Continuity(startValues, function(value, resolve, reject) {
+      setTimeout(function() {
+        if ( !isNaN(value) ) {
+          resolve(value + 10);
+        } else {
+          reject('"' + value + '" is not a number');
+        }
+      }, 20);
+    });
+
+    return continuity;
+  }
+
+  function tick(step) {
+    return new Promise(function(resolve, reject) {
+      if ( typeof step === 'undefined' ) {
+        continuity.then(function() {
+          resolve();
+        }).catch(function() {
+          resolve();
+        });
+      } else {
+        continuity.progress(function(v, o, vs, progressCount) {
+          if ( progressCount >= step ) {
+            resolve();
+          }
+        });
+      }
+    }).catch(function(error) {
+      throw error;
+    });
+  }
+
+  afterEach(function(done) {
+    tick().then(done);
+  });
 
   describe('#then', function() {
-    describe('with values all resolved', function() {
+    function runContinuity(startValues) {
+      createContinuity(startValues).then(setValues);
+    }
+
+    describe('with one element in collection', function() {
+      beforeEach(function(){
+        runContinuity([1]);
+      });
+
+      describe('before resolved', function() {
+        it('does not set values', function() {
+          assert.equal(values, null);
+        });
+      });
+
+      describe('after resolve', function() {
+        beforeEach(function(done) {
+          tick().then(done);
+        });
+
+        it('sets values to resolved', function(){
+          assert.equal(values[0], 11);
+        });
+      });
+
+    });
+
+    describe('with multiple values', function() {
+      beforeEach(function() {
+        runContinuity([1, 10, -23]);
+      });
+
+      describe('before resolved', function() {
+        it('does not set values', function() {
+          assert.equal(values, null);
+        });
+      });
+
+      describe('in the middle of resolving', function() {
+        beforeEach(function(done) {
+          tick(2).then(done);
+        });
+
+        it('does not set values', function() {
+          assert.equal(values, null);
+        });
+      });
+
+      describe('after resolve', function() {
+        beforeEach(function(done) {
+          tick().then(done);
+        });
+
+        it('sets values to resolved', function(){
+          assert.equal(values[0], 11);
+          assert.equal(values[1], 20);
+          assert.equal(values[2], -13);
+        });
+      });
+    });
+
+    describe('with chained methods', function() {
+      describe('with #then', function() {
+        beforeEach(function(done) {
+          createContinuity([1, 10])
+            .then(setValues)
+            .then(sumValues);
+
+          tick().then(done);
+        });
+
+        it('sets values in first then callback', function() {
+          assert.equal(values[0], 11);
+          assert.equal(values[1], 20);
+        });
+
+        it('sums values', function() {
+          assert.equal(sum, 31);
+        });
+      });
+
+      describe('with #catch', function() {
+        beforeEach(function(done) {
+          createContinuity(['George'])
+            .then(setValues)
+            .catch(setError);
+
+          tick().then(done);
+        });
+
+        it('sets error', function() {
+          assert.equal(error, '"George" is not a number');
+        });
+      });
+
+      describe('with #progress', function() {
+        beforeEach(function(done) {
+          createContinuity([1, 10])
+            .then(setValues)
+            .progress(collectProgressValues);
+
+          tick().then(done);
+        });
+
+        it('adds all resolved values', function() {
+          assert.equal(progressValues[0].resolvedValue, 11);
+          assert.equal(progressValues[1].resolvedValue, 20);
+        });
+      });
+    });
+
+    describe('with reject callback', function() {
       beforeEach(function(done) {
-        continuity = createContinuityObject()
-        continuity.progress(function(value) {
-          done();
+        createContinuity(['George'])
+          .then(function(_values) {
+            setValues(_values);
+          }, function(_error) {
+            setError(_error);
+          });
+
+        tick().then(done);
+      });
+
+      it('sets error', function() {
+        assert.equal(error, '"George" is not a number');
+      });
+    });
+  });
+
+  describe('#catch', function() {
+    beforeEach(function(){
+      continuity = createContinuity(['George']);
+    });
+
+    describe('before resolved', function() {
+      it('does not set error', function() {
+        assert.equal(error, null);
+      });
+    });
+
+    describe('after resolve', function() {
+      describe('before catch attached', function() {
+        beforeEach(function(done) {
+          tick().then(done);
+          continuity.catch(setError);
+        });
+
+        it('sets error', function() {
+            assert.equal(error, '"George" is not a number');
+        });
+
+      });
+
+      describe('after catch attached', function() {
+        beforeEach(function(done) {
+          continuity.catch(setError);
+          tick().then(done);
+        });
+
+        it('sets error', function() {
+          assert.equal(error, '"George" is not a number');
+        });
+      });
+    });
+
+    describe('with chained methods', function() {
+      describe('with #then', function() {
+        beforeEach(function(done) {
+          createContinuity([1, 10])
+            .catch(setError)
+            .then(function(_values) {
+              sumValues(_values);
+              done();
+            });
+
+        });
+
+        it('sums values', function() {
+          assert.equal(sum, 31);
         });
       });
 
-      it('runs then callback function', function() {
-        continuity.then(function(values) {
-          assert(values[0], 11);
+      describe('with #catch', function() {
+        var superBadError;
+
+        beforeEach(function(done) {
+          createContinuity(['George'])
+            .catch(setError)
+            .catch(function(_error) {
+              superBadError = _error + '!!!';
+            });
+
+          tick().then(done);
+        });
+
+        it('sets error', function() {
+          assert.equal(error, '"George" is not a number');
+        });
+
+        it('sets super bad error', function() {
+          assert.equal(superBadError, '"George" is not a number!!!');
+        });
+      });
+
+      describe('with #progress', function() {
+        beforeEach(function(done) {
+          createContinuity([1, 10])
+            .then(setValues)
+            .progress(collectProgressValues);
+
+          tick().then(done);
+        });
+
+        it('adds all resolved values', function() {
+          assert.equal(progressValues[0].resolvedValue, 11);
+          assert.equal(progressValues[1].resolvedValue, 20);
         });
       });
     });
   });
 
-  describe('with one element in collection', function() {
-    beforeEach(function(done){
-      runContinuitySequence(done);
-    });
-
-    it("runs the function one time", function(){
-      assert(values[0] == 11);
-    });
-
-    it('calls progress callback for element', function() {
-      assert(progress[0].value == 11);
-      assert(progress[0].originalValue == 1);
-      assert(progress[0].values[0] == 11);
-    });
-
-    it('chains progress callbacks', function() {
-      assert(progressCount == 1);
-    });
-  });
-
-  describe('with slow promise', function() {
-    beforeEach(function(done) {
-      initialValues = [1, 100];
-      runContinuitySequence(done);
-    });
-
-    it('doesn\'t return any values until finished', function() {
-      assert(values.length == 1);
-    });
-
-    it('calls progress callback only for completed functions', function() {
-      assert(progressCount == 1);
-    });
-  });
-
-  describe('with multiple values', function() {
-    beforeEach(function(done) {
-      initialValues = [1, 10, -23];
-      runContinuitySequence(done);
-    });
-
-    it("runs function on each value", function(){
-      assert(values[0] == 11);
-      assert(values[1] == 20);
-      assert(values[2] == -13);
-    });
-
-    it('calls progress callback for all elements', function() {
-      assert(progress[0].value == 11);
-      assert(progress[0].originalValue == 1);
-      assert(progress[0].values[0] == 11);
-      assert(progress[1].value == 20);
-      assert(progress[1].originalValue == 10);
-      assert(progress[1].values[1] == 20);
-      assert(progress[2].value == -13);
-      assert(progress[2].originalValue == -23);
-      assert(progress[2].values[2] == -13);
-    });
-
-    it('chains progress callbacks', function() {
-      assert(progressCount == 3);
-    });
-  });
-
-  describe('with error while calculating values', function() {
-    beforeEach(function(done) {
-      initialValues = [1, 'Not a number', -23];
-      runContinuitySequence(done);
-    });
-
-    it("fails if one promise fails", function(){
-      assert(errorMessage == 'Not a number dummy');
-    });
-
-    it('calls second callback in then method', function() {
-      assert(superBadErrorMessage == 'Not a number dummy!!!');
-    });
-  });
-
-  describe('with progress attached after promises resolved', function() {
-    var continuity;
-
-    beforeEach(function(done) {
-      initialValues = [1, 10];
-      continuity = runContinuitySequence(done);
-    });
-
-    it('fires progress function for all resolved values', function() {
-      var valueSum;
-      valueSum = 0;
-
-      continuity.progress(function(value) {
-        valueSum += value;
+  describe('#progress', function() {
+    describe('with one element in collection', function() {
+      beforeEach(function(){
+        createContinuity([1]).progress(collectProgressValues);
       });
 
-      assert(valueSum == 31);
-    });
-
-    it('fires progress function for all collection values', function() {
-      var collectionSum;
-      collectionSum = 0;
-
-      continuity.progress(function(value, originalValue) {
-        collectionSum += originalValue;
+      describe('before resolved', function() {
+        it('does not set values', function() {
+          assert.equal(progressValues.length, 0);
+        });
       });
 
-      assert(collectionSum == 11);
+      describe('after resolve', function() {
+        beforeEach(function(done) {
+          tick(1).then(done);
+        });
+
+        it('sets values to resolved', function(){
+          assert.equal(progressValues[0].resolvedValue, 11);
+        });
+      });
     });
 
-    it('fires progress function for all arrays of resolved values', function() {
-      var resolvedValues;
-      resolvedValues = [];
-
-      continuity.progress(function(value, originalValue, values) {
-        resolvedValues.push(values);
+    describe('with multiple values', function() {
+      beforeEach(function() {
+        values = []
+        continuity = createContinuity([1, -23]);
       });
 
-      assert(resolvedValues[0][0] == 11);
-      assert(resolvedValues[1][0] == 11);
-      assert(resolvedValues[1][1] == 20);
+      describe('before resolved', function() {
+        beforeEach(function() {
+          continuity.progress(collectProgressValues);
+        });
+
+        it('does not set any progress values', function() {
+          assert.equal(progressValues.length, 0);
+        });
+      });
+
+      describe('in the middle of resolving', function() {
+        beforeEach(function(done) {
+          values = [];
+          continuity = createContinuity([1, -23]);
+          tick(1).then(function() {
+            continuity.progress(collectProgressValues);
+            done();
+          });
+        });
+
+        it('sets first progress value', function() {
+          assert.equal(progressValues[0].resolvedValue, 11);
+        });
+
+        it('does not set second progress value', function() {
+          assert.equal(progressValues.length, 1);
+        });
+      });
+
+      describe('after all resolved', function() {
+        beforeEach(function(done) {
+          continuity = createContinuity([1, -23]);
+          tick().then(function() {
+            continuity.progress(collectProgressValues);
+            done();
+          });
+        });
+
+        it('sets first progress value', function() {
+          assert.equal(progressValues[0].resolvedValue, 11);
+        });
+
+        it('sets second progress value', function() {
+          assert.equal(progressValues[1].resolvedValue, -13);
+        });
+      });
     });
 
-    it('fires progress function for all progress values', function() {
-      var progressSum;
-      progressSum = 0;
+    describe('with chained methods', function() {
+      describe('with #then', function() {
+        beforeEach(function(done) {
+          createContinuity([1, 10])
+            .progress(collectProgressValues)
+            .then(sumValues);
 
-      continuity.progress(function(value, originalValue, values, progress) {
-        progressSum += progress;
+          tick().then(done);
+        });
+
+        it('sums values', function() {
+          assert.equal(sum, 31);
+        });
       });
 
-      assert(progressSum == 3);
+      describe('with #catch', function() {
+        beforeEach(function(done) {
+          createContinuity(['George'])
+            .progress(collectProgressValues)
+            .catch(setError);
+
+          tick().then(done);
+        });
+
+        it('sets error', function() {
+          assert.equal(error, '"George" is not a number');
+        });
+      });
+
+      describe('with #progress', function() {
+        var progressSum;
+
+        beforeEach(function(done) {
+          progressSum = 0;
+          createContinuity([1, 10])
+            .progress(collectProgressValues)
+            .progress(function(_value) {
+              progressSum += _value;
+            });
+
+          tick().then(done);
+        });
+
+        it('sums values', function() {
+          assert.equal(progressSum, 31);
+        });
+      });
     });
   });
 
   describe('#queue', function() {
     describe('with thenable callbacks not attached', function() {
-      var progressValues;
-
-      beforeEach(function() {
-        progressValues = [];
-      });
-
       describe('with all values resolved', function() {
         describe('with then method', function() {
           beforeEach(function(done) {
-            continuity = createContinuityObject()
+            continuity = createContinuity([1]);
 
-            continuity.progress(function(value) {
-              progressValues.push(value);
-            });
+            continuity.progress(collectProgressValues);
 
-            setTimeout(function() {
+            tick(1).then(function() {
               continuity.queue(5);
               continuity.then(function(_values) {
-                values = _values;
+                setValues(_values);
                 done();
               });
-            }, 50);
+            });
           });
 
           it('calls iteration function with added value', function() {
@@ -255,30 +443,29 @@ describe('Continuity', function() {
           });
 
           it('call progress function for added value', function() {
-            assert.equal(progressValues[1], 15);
+            assert.equal(progressValues[1].resolvedValue, 15);
           });
         });
 
         describe('with catch method', function() {
           beforeEach(function(done) {
-            continuity = createContinuityObject(1);
+            continuity = createContinuity([1]);
 
             continuity.progress(function(value) {
               progressValues.push(value);
             });
 
-            setTimeout(function() {
-              continuity.queue(5);
-              continuity.catch(function(_errorMessage) {
-                errorMessage = _errorMessage;
+            tick(1).then(function() {
+              continuity.queue('George');
+              continuity.catch(function(_error) {
+                setError(_error);
                 done();
               });
-            }, 50);
+            });
           });
 
-
           it('calls iteration function with added value', function() {
-            assert.equal(errorMessage, 'Rejected: 1');
+            assert.equal(error, '"George" is not a number');
           });
         });
       });
@@ -286,18 +473,14 @@ describe('Continuity', function() {
       describe('with current values still resolving', function() {
         describe('with then method', function() {
           beforeEach(function(done) {
-            continuity = createContinuityObject(false, true);
+            continuity = createContinuity([1]);
 
-            continuity.progress(function(value) {
-              progressValues.push(value);
-              if ( value == 15 ) {
-                done();
-              }
-            });
+            continuity.progress(collectProgressValues);
 
             continuity.queue(5);
             continuity.then(function(_values) {
-              values = _values;
+              setValues(_values);
+              done();
             });
           });
 
@@ -307,26 +490,23 @@ describe('Continuity', function() {
           });
 
           it('call progress function for added value', function() {
-            assert.equal(progressValues[1], 15);
+            assert.equal(progressValues[1].resolvedValue, 15);
           });
         });
 
         describe('with catch method', function() {
           beforeEach(function(done) {
-            continuity = createContinuityObject(5, true);
+            continuity = createContinuity([1]);
 
-            setTimeout(function() {
-              continuity.queue(5);
-              continuity.catch(function(_errorMessage) {
-                errorMessage = _errorMessage;
-                done();
-              });
-            }, 50);
+            continuity.queue('George');
+            continuity.catch(function(_error) {
+              setError(_error);
+              done();
+            });
           });
 
-
           it('calls iteration function with added value', function() {
-            assert.equal(errorMessage, 'Rejected: 5');
+            assert.equal(error, '"George" is not a number');
           });
         });
       });
@@ -334,7 +514,7 @@ describe('Continuity', function() {
 
     describe('with then callback attached', function() {
       beforeEach(function() {
-        continuity = createContinuityObject();
+        continuity = createContinuity([1]);
         continuity.then(function(){});
       });
 
@@ -347,8 +527,7 @@ describe('Continuity', function() {
 
     describe('with catch callback attached', function() {
       beforeEach(function() {
-        initialValues = ['George'];
-        continuity = createContinuityObject();
+        continuity = createContinuity(['George']);
         continuity.catch(function(){});
       });
 
@@ -359,5 +538,4 @@ describe('Continuity', function() {
       });
     });
   });
-
 });
