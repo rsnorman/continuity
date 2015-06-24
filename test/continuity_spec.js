@@ -1,6 +1,5 @@
 var assert = require('assert');
 var Continuity = require('..');
-var should = require('should');
 
 describe('Continuity', function() {
   var values, sum, error, progressValues;
@@ -189,7 +188,7 @@ describe('Continuity', function() {
           .then(function(_values) {
             setValues(_values);
           }, function(_error) {
-            error = _error;
+            setError(_error);
           });
 
         tick().then(done);
