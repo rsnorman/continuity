@@ -319,10 +319,14 @@ describe('Continuity', function() {
     describe('with multiple values', function() {
       beforeEach(function() {
         values = []
-        createContinuity([1, -23]).progress(collectProgressValues);
+        continuity = createContinuity([1, -23]);
       });
 
       describe('before resolved', function() {
+        beforeEach(function() {
+          continuity.progress(collectProgressValues);
+        });
+
         it('does not set any progress values', function() {
           assert.equal(progressValues.length, 0);
         });
@@ -352,8 +356,8 @@ describe('Continuity', function() {
           continuity = createContinuity([1, -23]);
           tick().then(function() {
             continuity.progress(collectProgressValues);
+            done();
           });
-          tick(2).then(done);
         });
 
         it('sets first progress value', function() {
