@@ -538,4 +538,20 @@ describe('Continuity', function() {
       });
     });
   });
+
+  describe('with chaining', function() {
+    beforeEach(function(done) {
+      continuity = createContinuity([1]);
+      continuity.queue(5).queue(6).then(function(_values) {
+        setValues(_values);
+        done();
+      });
+    });
+
+    it('sets all values', function() {
+      assert.equal(values[0], 11);
+      assert.equal(values[1], 15);
+      assert.equal(values[2], 16);
+    });
+  });
 });
