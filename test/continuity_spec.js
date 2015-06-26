@@ -75,6 +75,17 @@ describe('Continuity', function() {
       createContinuity(startValues).then(setValues);
     }
 
+    describe('with no elements in collection', function() {
+      beforeEach(function(done) {
+        runContinuity([]);
+        tick().then(done);
+      });
+
+      it('sets values to resolved', function(){
+        assert.equal(values.length, 0);
+      });
+    });
+
     describe('with one element in collection', function() {
       beforeEach(function(){
         runContinuity([1]);
@@ -536,6 +547,20 @@ describe('Continuity', function() {
           continuity.queue(5);
         }, 'All values resolved, cannot push another value');
       });
+    });
+  });
+
+  describe('with initial empty collection', function() {
+    beforeEach(function(done) {
+      continuity = createContinuity([]);
+      continuity.queue(5).then(function(_values) {
+        setValues(_values);
+        done();
+      });
+    });
+
+    it('sets all values', function() {
+      assert.equal(values[0], 15);
     });
   });
 

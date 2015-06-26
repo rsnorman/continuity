@@ -389,7 +389,9 @@ var Continuity = function(originalCollection, iterationFn) {
 
 
   // Start iterating through collection
-  collectionIterator();
+  if ( valueQueue.length > 0 ) {
+    collectionIterator();
+  }
 
 };
 
