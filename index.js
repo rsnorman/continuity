@@ -383,6 +383,8 @@ var Continuity = function(originalCollection, iterationFn) {
     if ( hasResolvedAllValues ) {
       collectionIterator();
     }
+
+    return _continuity;
   };
 
 
